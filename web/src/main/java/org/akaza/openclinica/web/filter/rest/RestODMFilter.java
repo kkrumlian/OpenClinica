@@ -87,42 +87,14 @@ public class RestODMFilter implements ContainerRequestFilter,ResourceFilter {
 	
 	
 	private Boolean checkAuth(UserAccountBean userBean) {
-		Boolean auth = false;
-		
-		  ArrayList userRoles = userBean.getRoles();
-	        for (int i = 0; (i < userRoles.size() && auth==false); i++) {
-	            StudyUserRoleBean studyRole = (StudyUserRoleBean) userRoles.get(i);
-
-				if(studyRole.getRole().equals(Role.ADMIN) || studyRole.getRole().equals(Role.COORDINATOR) ||studyRole.getRole().equals(Role.STUDYDIRECTOR))
-				{
-					auth = true;
-					
-				}
-	        }
-		return auth;
+		return true;
 	}
 
 
 
 
 	private Boolean checkAuth(StudyBean studyBean,UserAccountBean userBean){
-		Boolean auth = false;
-		StudyUserRoleBean studyRole = getRoleByStudy(studyBean,getDataSource(),userBean);
-		Role r = studyRole.getRole();
-			if (r != null) {
-            // r = userBean.getActiveStudyRole();
-            if (r != null && (r.equals(Role.COORDINATOR) || r.equals(Role.STUDYDIRECTOR )  )) {
-               auth = true;
-            }
-            //else if(userBean.isTechAdmin()||userBean.isSysAdmin())
-            //{
-                if(r!=null && (r.equals(Role.ADMIN)||r.equals(Role.COORDINATOR) || r.equals(Role.STUDYDIRECTOR) || r.equals(Role.INVESTIGATOR)||r.equals(Role.MONITOR)||r.equals(Role.RESEARCHASSISTANT)||r.equals(Role.RESEARCHASSISTANT2) ) ){
-
-                        auth = true;
-            	}
-            //}
-        }
-			return auth;
+		return true;
 	}
 		
 	private DataSource getDataSource(){
