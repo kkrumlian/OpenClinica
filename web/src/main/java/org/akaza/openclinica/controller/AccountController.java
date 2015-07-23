@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +32,7 @@ import javax.servlet.ServletContext;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 
 @Controller
@@ -56,6 +58,37 @@ public class AccountController {
 	UserDTO uDTO;
 	AuthoritiesDao authoritiesDao;
 	ParticipantPortalRegistrar participantPortalRegistrar;
+
+
+	@RequestMapping(value = "/login/{username}", method = RequestMethod.GET)
+	public ResponseEntity<HashMap> getAccountByUserName(@PathVariable("username") String userName) throws Exception {
+
+		System.out.println("I'm in getAccountByUserName");
+
+		ResourceBundleProvider.updateLocale(new Locale("en_US"));
+		UserAccountDAO userAccountDAO = new UserAccountDAO(dataSource);
+		StudyDAO studyDAO = new StudyDAO(dataSource);
+		HashMap<String,Object> userDTO = new HashMap<String,Object>();
+
+		UserAccountBean userAccountBean = (UserAccountBean) userAccountDAO.findByUserName(userName);
+		if(null != userAccountBean) {
+			userDTO.put("username", userName);
+			userDTO.put("password", userAccountBean.getPasswd());
+
+			ArrayList<HashMap<String,String>> rolesDTO = new ArrayList<>();
+			for (StudyUserRoleBean role : (List<StudyUserRoleBean>)userAccountBean.getRoles()) {
+				HashMap<String, String> map = new HashMap<String, String>();
+				map.put("roleName", role.getRoleName());
+				map.put("studyOID", ((StudyBean) studyDAO.findByPK(role.getStudyId())).getOid());
+				rolesDTO.add(map);
+			}
+			userDTO.put("roles",rolesDTO);
+		}else{
+			return new ResponseEntity<HashMap>(new HashMap(), org.springframework.http.HttpStatus.UNAUTHORIZED);
+
+		}
+		return new ResponseEntity<HashMap>(userDTO, org.springframework.http.HttpStatus.OK);
+	}
 
 	@RequestMapping(value = "/study/{studyOid}/crc/{crcUserName}", method = RequestMethod.GET)
 	public ResponseEntity<UserDTO> getAccount1(@PathVariable("studyOid") String studyOid, @PathVariable("crcUserName") String crcUserName) throws Exception {
