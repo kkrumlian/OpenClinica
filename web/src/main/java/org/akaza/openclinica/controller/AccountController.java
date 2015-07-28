@@ -74,6 +74,8 @@ public class AccountController {
 		if(null != userAccountBean) {
 			userDTO.put("username", userName);
 			userDTO.put("password", userAccountBean.getPasswd());
+			userDTO.put("firstName",userAccountBean.getFirstName());
+			userDTO.put("lastName",userAccountBean.getLastName());
 
 			ArrayList<HashMap<String,String>> rolesDTO = new ArrayList<>();
 			for (StudyUserRoleBean role : (List<StudyUserRoleBean>)userAccountBean.getRoles()) {
