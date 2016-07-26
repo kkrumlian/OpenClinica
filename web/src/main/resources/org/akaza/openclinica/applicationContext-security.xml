@@ -33,10 +33,12 @@
         <security:intercept-url pattern="/pages/auth/api/v1/studies/**" access="permitAll"/>
         <security:intercept-url pattern="/pages/odmss/**" access="permitAll"/>
         <security:intercept-url pattern="/pages/healthcheck/**" access="permitAll"/>
+        <security:intercept-url pattern="/pages/system/**" filters="none"/>
         <security:intercept-url pattern="/pages/api/v1/anonymousform/**" access="permitAll"/>
         <security:intercept-url pattern="/pages/api/v2/anonymousform/**" access="permitAll"/>
         <security:intercept-url pattern="/pages/api/v1/editform/**" access="permitAll"/>
         <security:intercept-url pattern="/pages/auth/api/v1/discrepancynote/**" access="permitAll"/>
+        <security:intercept-url pattern="/pages/auth/api/v1/batchmigration/**" filters="none"/>
         <security:intercept-url pattern="/pages/auth/api/**" access="permitAll"/>
         <!--
         <security:form-login login-page="/pages/login/login" authentication-failure-url="/pages/login/login?action=errorLogin"
