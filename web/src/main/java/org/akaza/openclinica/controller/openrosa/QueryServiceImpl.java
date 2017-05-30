@@ -72,15 +72,22 @@ public class QueryServiceImpl implements QueryService {
 
     @Override
     public void process(QueryServiceHelperBean helperBean, SubmissionContainer container, Node itemNode, int itemOrdinal) throws Exception {
+        String node = itemNode.getTextContent();
+        if (StringUtils.isEmpty(node))
+            return;
         helperBean.setContainer(container);
         helperBean.setItemOrdinal(itemOrdinal);
         helperBean.setItemNode(itemNode);
-        helperBean.setItemData(getItemData(helperBean));
-        // helperBean.setResStatus(resolutionStatusDao.findByResolutionStatusId(1));
+        ItemData id = getItemData(helperBean);
+        if (id == null) {
+            helperBean.setItemData(createBlankItemData(helperBean));
+        } else {
+            helperBean.setItemData(id);
+        }
         QueriesBean queries = null;
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            queries = objectMapper.readValue(itemNode.getTextContent(), QueriesBean.class);
+            queries = objectMapper.readValue(node, QueriesBean.class);
         } catch (IOException e) {
             logger.error(e.getMessage());
             throw e;
@@ -91,44 +98,41 @@ public class QueryServiceImpl implements QueryService {
         QueryBean queryBean = null;
         DiscrepancyNote childDN = null;
         DiscrepancyNote parentDN = null;
-
-        if (qBeans.size() == 1) {
-            queryBean = qBeans.get(0);
-            // this is the first entry , expected to build 2 records in DN table, one parent, the other child
-            parentDN = createQuery(helperBean, queryBean);
-            parentDN = discrepancyNoteDao.saveOrUpdate(parentDN);
-
-            childDN = createQuery(helperBean, queryBean);
-            childDN.setParentDiscrepancyNote(parentDN);
-            childDN = discrepancyNoteDao.saveOrUpdate(childDN);
-
-            parentDN.setUserAccount(childDN.getUserAccount());
-            parentDN = discrepancyNoteDao.saveOrUpdate(parentDN);
-            helperBean.setDn(parentDN);
-            saveQueryItemDatamap(helperBean);
-
-        } else if (qBeans.size() > 1) {
+        List<DiscrepancyNote> childDns = null;
+        if (qBeans.size() > 0) {
             for (QueryBean qBean : qBeans) {
                 idList.add(Integer.valueOf(qBean.getId()));
             }
             Collections.reverse(idList);
             queryBean = qBeans.get(0);
-
-            // Enketo passes JSON "id" attribute for unsubmitted queries only
-            // if (StringUtils.isEmpty(queryBean.getId())){
-
-            childDN = createQuery(helperBean, queryBean);
-            childDN.setParentDiscrepancyNote(findQueryParent(helperBean));
-            childDN = discrepancyNoteDao.saveOrUpdate(childDN);
-
             parentDN = findQueryParent(helperBean);
-            parentDN.setUserAccount(childDN.getUserAccount());
-            parentDN = discrepancyNoteDao.saveOrUpdate(parentDN);
 
+            if (parentDN == null) {
+                parentDN = createQuery(helperBean, queryBean);
+                parentDN = discrepancyNoteDao.saveOrUpdate(parentDN);
+                helperBean.setDn(parentDN);
+                saveQueryItemDatamap(helperBean);
+            }
+
+            childDns = findChildQueries(helperBean);
+            if (childDns.size() < qBeans.size()) {
+
+                // Enketo passes JSON "id" attribute for unsubmitted queries only
+                // if (StringUtils.isEmpty(queryBean.getId())){
+
+                childDN = createQuery(helperBean, queryBean);
+                childDN.setParentDiscrepancyNote(parentDN);
+                childDN = discrepancyNoteDao.saveOrUpdate(childDN);
+
+                parentDN.setUserAccount(childDN.getUserAccount());
+                setResolutionStatus(queryBean, parentDN);
+                parentDN = discrepancyNoteDao.saveOrUpdate(parentDN);
+
+                helperBean.setDn(childDN);
+                saveQueryItemDatamap(helperBean);
+                handleEmailNotification(helperBean, queryBean);
+            }
         }
-        helperBean.setDn(childDN);
-        saveQueryItemDatamap(helperBean);
-        handleEmailNotification(helperBean, queryBean);
     }
 
     private DiscrepancyNote createQuery(QueryServiceHelperBean helperBean, QueryBean queryBean) throws Exception {
@@ -139,25 +143,26 @@ public class QueryServiceImpl implements QueryService {
 
         dn.setDetailedNotes(queryBean.getComment());
         dn.setDiscrepancyNoteType(new DiscrepancyNoteType(3));
-
-        if (queryBean.getStatus().equals("new")) {
-            dn.setResolutionStatus(resolutionStatusDao.findById(1));
-        } else if (queryBean.getStatus().equals("updated")) {
-            dn.setResolutionStatus(resolutionStatusDao.findById(2));
-        } else if (queryBean.getStatus().equals("closed")) {
-            dn.setResolutionStatus(resolutionStatusDao.findById(4));
+        String user = queryBean.getUser();
+        if (user == null) {
+            dn.setUserAccountByOwnerId(helperBean.getContainer().getUser());
+        } else {
+            UserAccount userAccountByOwnerId = userAccountDao.findByUserName(user);
+            dn.setUserAccountByOwnerId(userAccountByOwnerId);
         }
+        setResolutionStatus(queryBean, dn);
 
-        String assignedTo = queryBean.getAssigned_to();
+        String assignedTo = "";
+        if (queryBean.getComment().startsWith("Automatic query for:")) {
+            assignedTo = helperBean.getContainer().getUser().getUserName();
+        } else {
+            assignedTo = queryBean.getAssigned_to();
+        }
         if (!StringUtils.isEmpty(assignedTo)) {
-            int endIndex = assignedTo.indexOf(")");
-            int begIndex = assignedTo.indexOf("(");
-            String userName = assignedTo.substring(begIndex + 1, endIndex);
-            UserAccount userAccount = userAccountDao.findByUserName(userName);
+            UserAccount userAccount = userAccountDao.findByUserName(assignedTo);
             helperBean.setUserAccount(userAccount);
             dn.setUserAccount(userAccount);
         }
-        dn.setUserAccountByOwnerId(helperBean.getContainer().getUser());
         // create itemData when a query is created without an autosaved itemdata
         if (helperBean.getItemData() == null) {
             helperBean.setItemData(createBlankItemData(helperBean));
@@ -191,6 +196,7 @@ public class QueryServiceImpl implements QueryService {
         itemData.setOrdinal(helperBean.getItemOrdinal());
         itemData.setUserAccount(helperBean.getUserAccount());
         itemData.setDeleted(false);
+        itemData.setInstanceId(helperBean.getContainer().getInstanceId());
         itemDataDao.saveOrUpdate(itemData);
         return itemData;
     }
@@ -198,6 +204,11 @@ public class QueryServiceImpl implements QueryService {
     private DiscrepancyNote findQueryParent(QueryServiceHelperBean helperBean) {
         DiscrepancyNote parentDiscrepancyNote = discrepancyNoteDao.findParentQueryByItemData(helperBean.getItemData().getItemDataId());
         return parentDiscrepancyNote;
+    }
+
+    private List<DiscrepancyNote> findChildQueries(QueryServiceHelperBean helperBean) {
+        List<DiscrepancyNote> childDiscrepancyNotes = discrepancyNoteDao.findChildQueriesByItemData(helperBean.getItemData().getItemDataId());
+        return childDiscrepancyNotes;
     }
 
     private void saveQueryItemDatamap(QueryServiceHelperBean helperBean) {
@@ -322,5 +333,17 @@ public class QueryServiceImpl implements QueryService {
 
         return addressTo;
 
+    }
+
+    private void setResolutionStatus(QueryBean queryBean, DiscrepancyNote dn) {
+        if (queryBean.getStatus().equals("new")) {
+            dn.setResolutionStatus(resolutionStatusDao.findById(1));
+        } else if (queryBean.getStatus().equals("updated")) {
+            dn.setResolutionStatus(resolutionStatusDao.findById(2));
+        } else if (queryBean.getStatus().equals("closed")) {
+            dn.setResolutionStatus(resolutionStatusDao.findById(4));
+        } else if (queryBean.getStatus().equals("closed-modified")) {
+            dn.setResolutionStatus(resolutionStatusDao.findById(6));
+        }
     }
 }

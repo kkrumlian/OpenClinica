@@ -1,15 +1,24 @@
 package org.akaza.openclinica.domain.xform;
 
+import java.util.List;
+
 public class XformItem {
     String itemPath = null;
     String itemName = null;
-    String itemSectionLabel = null;
     String itemDescription = null;
     String itemGroup = null;
     String itemResponseType = null;
     String itemDataType = null;
     String readonly = null;
     boolean calculate = false;
+    int itemOrderInForm;
+    boolean required = false;
+    String leftItemText = null;
+    private String optionsText;
+    private String optionsValues;
+    private String itemOid;
+    private boolean published = false;
+    private List<String> versions;
 
     public String getItemPath() {
         return itemPath;
@@ -25,14 +34,6 @@ public class XformItem {
 
     public void setItemName(String itemName) {
         this.itemName = itemName;
-    }
-
-    public String getItemSectionLabel() {
-        return itemSectionLabel;
-    }
-
-    public void setItemSectionLabel(String itemSectionLabel) {
-        this.itemSectionLabel = itemSectionLabel;
     }
 
     public String getItemDescription() {
@@ -81,6 +82,70 @@ public class XformItem {
 
     public void setCalculate(boolean calculate) {
         this.calculate = calculate;
+    }
+
+    public int getItemOrderInForm() {
+        return itemOrderInForm;
+    }
+
+    public void setItemOrderInForm(int itemOrderInForm) {
+        this.itemOrderInForm = itemOrderInForm;
+    }
+
+    public boolean isRequired() {
+        return required;
+    }
+
+    public void setRequired(boolean required) {
+        this.required = required;
+    }
+
+    public String getLeftItemText() {
+        return leftItemText;
+    }
+
+    public void setLeftItemText(String leftItemText) {
+        this.leftItemText = leftItemText;
+    }
+
+    public String getOptionsText() {
+        return optionsText;
+    }
+
+    public void setOptionsText(String optionsText) {
+        this.optionsText = optionsText;
+    }
+
+    public String getOptionsValues() {
+        return optionsValues;
+    }
+
+    public void setOptionsValues(String optionsValues) {
+        this.optionsValues = optionsValues;
+    }
+
+    public String getItemOid() {
+        return itemOid;
+    }
+
+    public void setItemOid(String itemOid) {
+        this.itemOid = itemOid;
+    }
+
+    public boolean isPublished() {
+        return published;
+    }
+
+    public void setPublished(boolean published) {
+        this.published = published;
+    }
+
+    public List<String> getVersions() {
+        return versions;
+    }
+
+    public void setVersions(List<String> versions) {
+        this.versions = versions;
     }
 
 }

@@ -25,25 +25,30 @@ import org.akaza.openclinica.bean.managestudy.DiscrepancyNoteBean;
 import org.akaza.openclinica.bean.managestudy.StudyBean;
 import org.akaza.openclinica.bean.managestudy.StudyEventBean;
 import org.akaza.openclinica.bean.managestudy.StudySubjectBean;
-import org.akaza.openclinica.bean.submit.CRFVersionBean;
 import org.akaza.openclinica.bean.submit.EventCRFBean;
+import org.akaza.openclinica.bean.submit.FormLayoutBean;
+import org.akaza.openclinica.bean.submit.ItemBean;
 import org.akaza.openclinica.bean.submit.ItemDataBean;
 import org.akaza.openclinica.bean.submit.ItemFormMetadataBean;
+import org.akaza.openclinica.bean.submit.ItemGroupBean;
+import org.akaza.openclinica.bean.submit.ItemGroupMetadataBean;
 import org.akaza.openclinica.control.SpringServletAccess;
 import org.akaza.openclinica.control.core.SecureController;
 import org.akaza.openclinica.control.form.FormProcessor;
 import org.akaza.openclinica.control.submit.CreateDiscrepancyNoteServlet;
-import org.akaza.openclinica.control.submit.DataEntryServlet;
 import org.akaza.openclinica.control.submit.EnketoFormServlet;
 import org.akaza.openclinica.control.submit.EnterDataForStudyEventServlet;
 import org.akaza.openclinica.control.submit.TableOfContentsServlet;
 import org.akaza.openclinica.dao.managestudy.DiscrepancyNoteDAO;
 import org.akaza.openclinica.dao.managestudy.StudyEventDAO;
 import org.akaza.openclinica.dao.managestudy.StudySubjectDAO;
-import org.akaza.openclinica.dao.submit.CRFVersionDAO;
 import org.akaza.openclinica.dao.submit.EventCRFDAO;
+import org.akaza.openclinica.dao.submit.FormLayoutDAO;
+import org.akaza.openclinica.dao.submit.ItemDAO;
 import org.akaza.openclinica.dao.submit.ItemDataDAO;
 import org.akaza.openclinica.dao.submit.ItemFormMetadataDAO;
+import org.akaza.openclinica.dao.submit.ItemGroupDAO;
+import org.akaza.openclinica.dao.submit.ItemGroupMetadataDAO;
 import org.akaza.openclinica.service.DiscrepancyNoteUtil;
 import org.akaza.openclinica.service.crfdata.EnketoUrlService;
 import org.akaza.openclinica.service.crfdata.xform.PFormCacheSubjectContextEntry;
@@ -67,6 +72,8 @@ public class ResolveDiscrepancyServlet extends SecureController {
 
     private static final String RESOLVING_NOTE = "resolving_note";
     private static final String RETURN_FROM_PROCESS_REQUEST = "returnFromProcess";
+    private static final String QUERY_FLAVOR = "-query";
+    private static final String COMMENT = "_comment";
 
     public Page getPageForForwarding(DiscrepancyNoteBean note, boolean isCompleted) {
         String entityType = note.getEntityType().toLowerCase();
@@ -94,7 +101,7 @@ public class ResolveDiscrepancyServlet extends SecureController {
             if (currentRole.getRole().equals(Role.MONITOR) || !isCompleted) {
                 return Page.ENKETO_FORM_SERVLET;
             } else {
-                return Page.ADMIN_EDIT_SERVLET;
+                return Page.ENKETO_FORM_SERVLET;
             }
         }
         return null;
@@ -137,13 +144,16 @@ public class ResolveDiscrepancyServlet extends SecureController {
         // this is for item data
         else if ("itemdata".equalsIgnoreCase(entityType)) {
             ItemDataDAO iddao = new ItemDataDAO(ds);
+            ItemDAO idao = new ItemDAO(ds);
             ItemDataBean idb = (ItemDataBean) iddao.findByPK(id);
+            ItemBean item = (ItemBean) idao.findByPK(idb.getItemId());
+            ItemGroupMetadataDAO igmdao = new ItemGroupMetadataDAO<>(ds);
 
             EventCRFDAO ecdao = new EventCRFDAO(ds);
             EventCRFBean ecb = (EventCRFBean) ecdao.findByPK(idb.getEventCRFId());
 
-            CRFVersionDAO cvdao = new CRFVersionDAO(ds);
-            CRFVersionBean crfVersion = (CRFVersionBean) cvdao.findByPK(ecb.getCRFVersionId());
+            FormLayoutDAO fldao = new FormLayoutDAO(ds);
+            FormLayoutBean formLayout = (FormLayoutBean) fldao.findByPK(ecb.getFormLayoutId());
 
             StudyEventDAO sedao = new StudyEventDAO(ds);
 
@@ -151,40 +161,46 @@ public class ResolveDiscrepancyServlet extends SecureController {
             StudySubjectBean ssb = (StudySubjectBean) ssdao.findByPK(ecb.getStudySubjectId());
 
             ItemFormMetadataDAO ifmdao = new ItemFormMetadataDAO(ds);
-            ItemFormMetadataBean ifmb = ifmdao.findByItemIdAndCRFVersionId(idb.getItemId(), ecb.getCRFVersionId());
+            ItemFormMetadataBean ifmb = ifmdao.findByItemIdAndCRFVersionId(idb.getItemId(), ecb.getFormLayoutId());
 
-            if (currentRole.getRole().equals(Role.MONITOR) || !isCompleted) {
-                EnketoUrlService enketoUrlService = (EnketoUrlService) SpringServletAccess.getApplicationContext(context).getBean("enketoUrlService");
-                StudyEventBean seb = (StudyEventBean) sedao.findByPK(ecb.getStudyEventId());
+            ItemGroupMetadataBean igmBean = (ItemGroupMetadataBean) igmdao.findByItemAndCrfVersion(idb.getItemId(), ecb.getCRFVersionId());
+            ItemGroupDAO igdao = new ItemGroupDAO<>(ds);
+            ItemGroupBean igBean = (ItemGroupBean) igdao.findByPK(igmBean.getItemGroupId());
 
-                // Cache the subject context for use during xform submission
-                PFormCache cache = PFormCache.getInstance(context);
-                PFormCacheSubjectContextEntry subjectContext = new PFormCacheSubjectContextEntry();
-                subjectContext.setStudySubjectOid(ssb.getOid());
-                subjectContext.setStudyEventDefinitionId(seb.getStudyEventDefinitionId());
-                subjectContext.setOrdinal(seb.getSampleOrdinal());
-                subjectContext.setCrfVersionOid(crfVersion.getOid());
-                subjectContext.setUserAccountId(ub.getId());
-                String contextHash = cache.putSubjectContext(subjectContext);
-                String flavor = "-query";
+            EnketoUrlService enketoUrlService = (EnketoUrlService) SpringServletAccess.getApplicationContext(context).getBean("enketoUrlService");
+            StudyEventBean seb = (StudyEventBean) sedao.findByPK(ecb.getStudyEventId());
 
-                String formUrl = null;
-                if (ecb.getId() > 0) {
-                    formUrl = enketoUrlService.getEditUrl(contextHash, subjectContext, currentStudy.getOid(), null, null, flavor);
-                } else {
-                    formUrl = enketoUrlService.getInitialDataEntryUrl(contextHash, subjectContext, currentStudy.getOid(), flavor);
-                }
+            // Cache the subject context for use during xform submission
+            PFormCache cache = PFormCache.getInstance(context);
+            PFormCacheSubjectContextEntry subjectContext = new PFormCacheSubjectContextEntry();
+            subjectContext.setStudySubjectOid(ssb.getOid());
+            subjectContext.setStudyEventDefinitionId(seb.getStudyEventDefinitionId());
+            subjectContext.setOrdinal(seb.getSampleOrdinal());
+            subjectContext.setFormLayoutOid(formLayout.getOid());
+            subjectContext.setUserAccountId(ub.getId());
+            subjectContext.setItemName(item.getName() + COMMENT);
+            subjectContext.setItemRepeatOrdinal(idb.getOrdinal());
+            subjectContext.setItemInRepeatingGroup(igmBean.isRepeatingGroup());
+            subjectContext.setItemRepeatGroupName(igBean.getLayoutGroupPath());
+            String contextHash = cache.putSubjectContext(subjectContext);
 
-                request.setAttribute(EnketoFormServlet.FORM_URL, formUrl);
+            String formUrl = null;
+            if (ecb.getId() > 0) {
+                formUrl = enketoUrlService.getEditUrl(contextHash, subjectContext, currentStudy.getOid(), null, null, QUERY_FLAVOR);
             } else {
-                request.setAttribute(DataEntryServlet.INPUT_EVENT_CRF_ID, String.valueOf(idb.getEventCRFId()));
-                request.setAttribute(DataEntryServlet.INPUT_SECTION_ID, String.valueOf(ifmb.getSectionId()));
-
+                formUrl = enketoUrlService.getInitialDataEntryUrl(contextHash, subjectContext, currentStudy.getOid(), QUERY_FLAVOR);
             }
+            int hashIndex = formUrl.lastIndexOf("#");
+            String part1 = formUrl;
+            String part2 = "";
+            if (hashIndex != -1) {
+                part1 = formUrl.substring(0, hashIndex);
+                part2 = formUrl.substring(hashIndex);
+            }
+            request.setAttribute(EnketoFormServlet.FORM_URL1, part1);
+            request.setAttribute(EnketoFormServlet.FORM_URL2, part2);
         }
-
         return true;
-
     }
 
     /*
@@ -198,7 +214,6 @@ public class ResolveDiscrepancyServlet extends SecureController {
         FormProcessor fp = new FormProcessor(request);
         int noteId = fp.getInt(INPUT_NOTE_ID);
         String module = (String) session.getAttribute("module");
-        // Integer subjectId = (Integer) session.getAttribute("subjectId");
 
         StudySubjectDAO studySubjectDAO = new StudySubjectDAO(sm.getDataSource());
 
@@ -332,7 +347,6 @@ public class ResolveDiscrepancyServlet extends SecureController {
     @Override
     protected void mayProceed() throws InsufficientPermissionException {
         String module = (String) session.getAttribute("module");
-        // Integer subjectId = (Integer) session.getAttribute("subjectId");
         /*
          * BWP: This caused a problem with page refreshing (the subjectId was
          * lost); so I had to comment it out if(subjectId != null){
