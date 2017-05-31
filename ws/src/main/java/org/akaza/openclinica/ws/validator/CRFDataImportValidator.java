@@ -12,7 +12,12 @@ import org.springframework.validation.Validator;
 
 import javax.sql.DataSource;
 
-public class CRFDataImportValidator extends AbstractValidator implements Validator {
+public class CRFDataImportValidator implements Validator {
+
+    DataSource dataSource;
+    StudyDAO studyDAO;
+    UserAccountDAO userAccountDAO;
+    BaseVSValidatorImplementation helper;
 
     public CRFDataImportValidator(DataSource dataSource) {
         this.dataSource = dataSource;

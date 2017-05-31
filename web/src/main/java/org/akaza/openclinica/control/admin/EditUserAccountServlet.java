@@ -211,6 +211,7 @@ public class EditUserAccountServlet extends SecureController {
                 } else {
                     udao.update(user);
                 }
+
                 addPageMessage(respage.getString("the_user_account") + " \"" + user.getName() + "\" " + respage.getString("was_updated_succesfully"));
                 forwardPage(Page.LIST_USER_ACCOUNTS_SERVLET);
             } else {

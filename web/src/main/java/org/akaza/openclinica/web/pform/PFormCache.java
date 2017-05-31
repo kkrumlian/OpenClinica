@@ -99,22 +99,22 @@ public class PFormCache {
 
     public String putSubjectContext(PFormCacheSubjectContextEntry entry) {
         return putSubjectContext(entry.getStudySubjectOid(), entry.getStudyEventDefinitionId().toString(), entry.getOrdinal().toString(),
-                entry.getFormLayoutOid(), entry.getUserAccountId().toString(), entry.getStudyOid());
+                entry.getFormLayoutOid(), entry.getUserAccountId().toString());
     }
 
-    public String putSubjectContext(String studySubjectOID, String studyEventDefinitionID, String studyEventOrdinal, String formLayoutOID, String studyOid) {
-        return putSubjectContext(studySubjectOID, studyEventDefinitionID, studyEventOrdinal, formLayoutOID, null, studyOid);
+    public String putSubjectContext(String studySubjectOID, String studyEventDefinitionID, String studyEventOrdinal, String formLayoutOID) {
+        return putSubjectContext(studySubjectOID, studyEventDefinitionID, studyEventOrdinal, formLayoutOID, null);
     }
 
     public String putSubjectContext(String studySubjectOID, String studyEventDefinitionID, String studyEventOrdinal, String formLayoutOID,
-            String userAccountID, String studyOid) {
+            String userAccountID) {
         HashMap<String, String> contextMap = new HashMap<String, String>();
         contextMap.put("studySubjectOID", studySubjectOID);
         contextMap.put("studyEventDefinitionID", studyEventDefinitionID);
         contextMap.put("studyEventOrdinal", studyEventOrdinal);
         contextMap.put("formLayoutOID", formLayoutOID);
         contextMap.put("userAccountID", userAccountID);
-        contextMap.put("studyOid", studyOid);
+
         String hashString = studySubjectOID + "." + studyEventDefinitionID + "." + studyEventOrdinal + "." + formLayoutOID;
         ShaPasswordEncoder encoder = new ShaPasswordEncoder(256);
         String hashOutput = encoder.encodePassword(hashString, null);

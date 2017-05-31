@@ -133,7 +133,6 @@ public class OdmFileCreation {
 
         long sysTimeEnd = System.currentTimeMillis() - sysTimeBegin;
         String ODMXMLFileName = mdc.getODMBean().getFileOID() + ".xml";
-
         int fId = createFileK(ODMXMLFileName, generalFileDir, metaReport.getXmlOutput().toString(), datasetBean, sysTimeEnd, ExportFormatBean.XMLFILE, false,
                 zipped, deleteOld, userBean);
         if (!"".equals(generalFileDirCopy)) {
@@ -268,6 +267,7 @@ public class OdmFileCreation {
 
         answerMap.put(ODMXMLFileName, new Integer(fId));
         // if(deleteOld && files!=null &&oldFiles!=null) setOldFiles(oldFiles);
+
         return answerMap;
     }
 
@@ -297,9 +297,8 @@ public class OdmFileCreation {
             File newFile = null;
             if (oldFile.exists()) {
                 newFile = oldFile;
-                if (oldFiles != null || !oldFiles.isEmpty()) {
+                if (oldFiles != null || !oldFiles.isEmpty())
                     oldFiles.remove(oldFile);
-                }
             } else {
                 newFile = new File(complete, name);
             }
@@ -310,7 +309,7 @@ public class OdmFileCreation {
             w = new BufferedWriter(new FileWriter(newFile, true));
             w.write(content);
             w.close();
-            LOG.info("finished writing the text file..." + dir + "#######file:" + name);
+            LOG.info("finished writing the text file...");
             // set up the zip to go into the database
             if (saveToDB) {
                 ArchivedDatasetFileBean fb = new ArchivedDatasetFileBean();

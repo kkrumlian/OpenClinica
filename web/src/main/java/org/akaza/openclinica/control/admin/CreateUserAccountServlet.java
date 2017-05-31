@@ -83,7 +83,6 @@ public class CreateUserAccountServlet extends SecureController {
 
     @Override
     protected void processRequest() throws Exception {
-        request.setAttribute("requestSchema", "public");
         FormProcessor fp = new FormProcessor(request);
 
         StudyDAO sdao = new StudyDAO(sm.getDataSource());

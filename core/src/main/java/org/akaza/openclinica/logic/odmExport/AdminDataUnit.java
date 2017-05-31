@@ -16,9 +16,7 @@ import org.akaza.openclinica.bean.extract.DatasetBean;
 import org.akaza.openclinica.bean.managestudy.StudyBean;
 import org.akaza.openclinica.bean.odmbeans.ODMBean;
 import org.akaza.openclinica.bean.odmbeans.OdmAdminDataBean;
-import org.akaza.openclinica.dao.core.CoreResources;
 import org.akaza.openclinica.dao.extract.OdmExtractDAO;
-import org.akaza.openclinica.dao.managestudy.StudyDAO;
 
 /**
  * A class for ODM AdminData of one study.
@@ -45,8 +43,6 @@ public class AdminDataUnit extends OdmUnit {
     public void collectOdmAdminData() {
         StudyBean study = studyBase.getStudy();
         String studyOID = study.getOid();
-        StudyDAO studyDAO = new StudyDAO(this.ds);
-        StudyBean publicStudy = studyDAO.getPublicStudy(studyOID);
         if (studyOID == null || studyOID.length() <= 0) {
             logger.info("Constructed studyOID using study_id because oc_oid is missing from the table - study.");
             studyOID = "" + study.getId();
@@ -72,7 +68,7 @@ public class AdminDataUnit extends OdmUnit {
                 odmAdminData.setMetaDataVersionOID("v1.0.0");
             }
         }
-        oedao.getAdminData(publicStudy, this.dataset, odmAdminData, this.odmBean.getODMVersion());
+        oedao.getAdminData(study, this.dataset, odmAdminData, this.odmBean.getODMVersion());
     }
 
     public OdmAdminDataBean getOdmAdminData() {

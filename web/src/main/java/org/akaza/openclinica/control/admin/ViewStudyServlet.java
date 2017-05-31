@@ -58,17 +58,16 @@ public class ViewStudyServlet extends SecureController {
         StudyDAO sdao = new StudyDAO(sm.getDataSource());
         FormProcessor fp = new FormProcessor(request);
         int studyId = fp.getInt("id");
-        StudyBean study = (StudyBean) sdao.findByPK(studyId);
-
         if (studyId == 0) {
             addPageMessage(respage.getString("please_choose_a_study_to_view"));
             forwardPage(Page.STUDY_LIST_SERVLET);
         } else {
             if (currentStudy.getId() != studyId && currentStudy.getParentStudyId() != studyId) {
-                checkRoleByUserAndStudy(ub, study, sdao);
+                checkRoleByUserAndStudy(ub, studyId, 0);
             }
 
             String viewFullRecords = fp.getString("viewFull");
+            StudyBean study = (StudyBean) sdao.findByPK(studyId);
 
 
             StudyConfigService scs = new StudyConfigService(sm.getDataSource());
@@ -108,16 +107,11 @@ public class ViewStudyServlet extends SecureController {
                 ArrayList subjects = new ArrayList();
                 if (this.currentStudy.getParentStudyId() > 0 && this.currentRole.getRole().getId() > 3) {
                     sites.add(this.currentStudy);
-                    request.setAttribute("requestSchema", "public");
-                    userRoles = udao.findAllUsersByStudy(currentPublicStudy.getId());
-                    request.setAttribute("requestSchema", currentPublicStudy.getSchemaName());
+                    userRoles = udao.findAllUsersByStudy(currentStudy.getId());
                     subjects = ssdao.findAllByStudy(currentStudy);
                 } else {
                     sites = (ArrayList) sdao.findAllByParent(studyId);
-                    StudyBean publicStudy = sdao.getPublicStudy(study.getOid());
-                    request.setAttribute("requestSchema", "public");
-                    userRoles = udao.findAllUsersByStudy(publicStudy.getId());
-                    request.setAttribute("requestSchema", publicStudy.getSchemaName());
+                    userRoles = udao.findAllUsersByStudy(studyId);
                     subjects = ssdao.findAllByStudy(study);
                 }
 

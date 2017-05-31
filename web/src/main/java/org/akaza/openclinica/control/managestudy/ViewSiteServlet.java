@@ -77,7 +77,7 @@ public class ViewSiteServlet extends SecureController {
             int siteId = Integer.valueOf(idString.trim()).intValue();
             StudyBean study = (StudyBean) sdao.findByPK(siteId);
 
-            checkRoleByUserAndStudy(ub, study, sdao);
+            checkRoleByUserAndStudy(ub, study.getParentStudyId(), study.getId());
             // if (currentStudy.getId() != study.getId()) {
 
             ArrayList configs = new ArrayList();

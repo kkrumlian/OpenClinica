@@ -3,16 +3,15 @@ package org.akaza.openclinica.bean.login;
 public class ResponseSuccessStudyDTO {
 
 	private String message;
-	private String uniqueStudyID;
+	private String uniqueProtocolID;
 	private String studyOid;
-	private String schemaName;
 
-	public String getUniqueStudyID() {
-		return uniqueStudyID;
+	public String getUniqueProtocolID() {
+		return uniqueProtocolID;
 	}
 
-	public void setUniqueStudyID(String uniqueStudyID) {
-		this.uniqueStudyID = uniqueStudyID;
+	public void setUniqueProtocolID(String uniqueProtocolID) {
+		this.uniqueProtocolID = uniqueProtocolID;
 	}
 
 	public String getStudyOid() {
@@ -31,11 +30,4 @@ public class ResponseSuccessStudyDTO {
 		this.message = message;
 	}
 
-	public String getSchemaName() {
-		return schemaName;
-	}
-
-	public void setSchemaName(String schemaName) {
-		this.schemaName = schemaName;
-	}
 }

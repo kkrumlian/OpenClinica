@@ -62,7 +62,7 @@ public class ViewSubjectGroupClassServlet extends SecureController {
             StudyGroupClassBean sgcb = (StudyGroupClassBean) sgcdao.findByPK(classId);
             StudyBean study = (StudyBean)studyDao.findByPK(sgcb.getStudyId());
 
-            checkRoleByUserAndStudy(ub, study, studyDao);
+            checkRoleByUserAndStudy(ub, sgcb.getStudyId(), study.getParentStudyId());
 
             // YW 09-19-2007 <<
             sgcb.setGroupClassTypeName(GroupClassType.get(sgcb.getGroupClassTypeId()).getName());

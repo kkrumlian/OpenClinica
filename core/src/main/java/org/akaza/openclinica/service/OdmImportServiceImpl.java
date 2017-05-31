@@ -1,12 +1,35 @@
 package org.akaza.openclinica.service;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.sql.DataSource;
+
 import org.akaza.openclinica.bean.core.Role;
 import org.akaza.openclinica.bean.login.UserAccountBean;
 import org.akaza.openclinica.bean.managestudy.StudyBean;
-import org.akaza.openclinica.dao.core.CoreResources;
-import org.akaza.openclinica.dao.hibernate.*;
+import org.akaza.openclinica.dao.hibernate.CrfDao;
+import org.akaza.openclinica.dao.hibernate.CrfVersionDao;
+import org.akaza.openclinica.dao.hibernate.EventDefinitionCrfDao;
+import org.akaza.openclinica.dao.hibernate.EventDefinitionCrfTagDao;
+import org.akaza.openclinica.dao.hibernate.FormLayoutDao;
+import org.akaza.openclinica.dao.hibernate.FormLayoutMediaDao;
+import org.akaza.openclinica.dao.hibernate.StudyDao;
+import org.akaza.openclinica.dao.hibernate.StudyEventDefinitionDao;
+import org.akaza.openclinica.dao.hibernate.StudyParameterValueDao;
+import org.akaza.openclinica.dao.hibernate.StudyUserRoleDao;
+import org.akaza.openclinica.dao.hibernate.UserAccountDao;
 import org.akaza.openclinica.domain.Status;
-import org.akaza.openclinica.domain.datamap.*;
+import org.akaza.openclinica.domain.datamap.CrfBean;
+import org.akaza.openclinica.domain.datamap.EventDefinitionCrf;
+import org.akaza.openclinica.domain.datamap.EventDefinitionCrfTag;
+import org.akaza.openclinica.domain.datamap.FormLayout;
+import org.akaza.openclinica.domain.datamap.Study;
+import org.akaza.openclinica.domain.datamap.StudyEventDefinition;
+import org.akaza.openclinica.domain.datamap.StudyParameterValue;
+import org.akaza.openclinica.domain.datamap.StudyUserRole;
+import org.akaza.openclinica.domain.datamap.StudyUserRoleId;
 import org.akaza.openclinica.domain.user.UserAccount;
 import org.akaza.openclinica.domain.xform.XformParser;
 import org.akaza.openclinica.service.crfdata.ExecuteIndividualCrfObject;
@@ -23,7 +46,6 @@ import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionStudy;
 import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionStudyEventDef;
 import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionStudyEventRef;
 import org.cdisc.ns.odm.v130.YesOrNo;
-
 import org.openclinica.ns.odm_ext_v130.v31.OCodmComplexTypeDefinitionConfigurationParameters;
 import org.openclinica.ns.odm_ext_v130.v31.OCodmComplexTypeDefinitionEventDefinitionDetails;
 import org.openclinica.ns.odm_ext_v130.v31.OCodmComplexTypeDefinitionFormLayoutDef;
@@ -34,11 +56,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.DataBinder;
 import org.springframework.validation.Errors;
 import org.springframework.web.client.RestTemplate;
-
-import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
 
 public class OdmImportServiceImpl implements OdmImportService {
     public final String FM_BASEURL = "http://fm.openclinica.info:8080/api/protocol/";
@@ -55,7 +72,6 @@ public class OdmImportServiceImpl implements OdmImportService {
     private StudyDao studyDao;
     private EventDefinitionCrfTagDao eventDefinitionCrfTagDao;
     private StudyParameterValueDao studyParameterValueDao;
-    private DataSource dataSource;
 
     private XformParser xformParser;
 
@@ -64,13 +80,10 @@ public class OdmImportServiceImpl implements OdmImportService {
     protected final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
     public OdmImportServiceImpl(DataSource dataSource) {
-        this.dataSource = dataSource;
     }
 
     @Transactional
-    public void importOdmToOC(ODM odm, String boardId) {
-
-        CoreResources.setRequestSchemaByStudy(odm.getStudy().get(0).getOID(),dataSource);
+    public void importOdmToOC(ODM odm) {
 
         UserAccount userAccount = getCurrentUser();
         // TODO add validation to all entities
@@ -94,15 +107,13 @@ public class OdmImportServiceImpl implements OdmImportService {
 
         Form[] fmCrfs = getAllCrfsByProtIdFromFormManager(study);
 
-
-
-/*        ArrayList<StudyUserRole> surRoles = getStudyUserRoleDao().findAllUserRolesByUserAccount(userAccount, study.getStudyId(), study.getStudyId());
+        ArrayList<StudyUserRole> surRoles = getStudyUserRoleDao().findAllUserRolesByUserAccount(userAccount, study.getStudyId(), study.getStudyId());
         if (surRoles.size() == 0) {
             studyUserRoleId = new StudyUserRoleId();
             studyUserRole = new StudyUserRole();
             studyUserRole = getStudyUserRoleDao().saveOrUpdate(populateUserRole(study, userAccount, studyUserRole, studyUserRoleId));
         }
-*/
+
         StudyEventDefinition studyEventDefinition = null;
         List<ODMcomplexTypeDefinitionMetaDataVersion> odmMetadataVersions = odmStudy.getMetaDataVersion();
         List<ODMcomplexTypeDefinitionStudyEventDef> odmStudyEventDefs = saveOrUpdateEvent(userAccount, study, odmMetadataVersions);
@@ -216,7 +227,6 @@ public class OdmImportServiceImpl implements OdmImportService {
             String crfOid = odmFormDef.getOID();
             List<OCodmComplexTypeDefinitionFormLayoutDef> formLayoutDefs = odmFormDef.getFormLayoutDef();
             // String crfDescription = odmFormDef.getFormDetails().getDescription();
- 
             String crfName = odmFormDef.getName();
             saveOrUpdateCrfAndFormLayouts(crfOid, formLayoutDefs, fmCrfs, userAccount, study, crfName);
         }
@@ -236,13 +246,12 @@ public class OdmImportServiceImpl implements OdmImportService {
         ub.setActiveStudyId(currentStudy.getId());
 
         for (Form crf : fmCrfs) {
-
             if (crf.getOcoid().equals(crfOid)) {
                 ExecuteIndividualCrfObject eicObj = new ExecuteIndividualCrfObject(crf, formLayoutDefs, errors, currentStudy, ub, true, null);
                 xformService.executeIndividualCrf(eicObj);
             }
         }
-        }
+
     }
 
     private List<ODMcomplexTypeDefinitionStudyEventDef> saveOrUpdateEvent(UserAccount userAccount, Study study,
@@ -308,11 +317,11 @@ public class OdmImportServiceImpl implements OdmImportService {
 
     private StudyUserRole populateUserRole(Study study, UserAccount userAccount, StudyUserRole sur, StudyUserRoleId surId) {
         surId.setUserName(userAccount.getUserName());
-        sur.setRoleName(Role.STUDYDIRECTOR.getName());
+        surId.setRoleName(Role.STUDYDIRECTOR.getName());
         surId.setStudyId(study.getStudyId());
-        sur.setStatusId(1);
-        sur.setOwnerId(userAccount.getUserId());
-        sur.setDateCreated(new Date());
+        surId.setStatusId(1);
+        surId.setOwnerId(userAccount.getUserId());
+        surId.setDateCreated(new Date());
         sur.setId(surId);
         return sur;
     }
@@ -520,11 +529,10 @@ public class OdmImportServiceImpl implements OdmImportService {
     }
 
     public Form[] getAllCrfsByProtIdFromFormManager(Study study) {
-
         // String protocolId = study.getUniqueIdentifier();
-      //  String protocolId = study.getOc_oid();
+        String protocolId = study.getOc_oid();
 
-        String url = FM_BASEURL + boardId + "/forms";
+        String url = FM_BASEURL + protocolId + "/forms";
         RestTemplate restTemplate = new RestTemplate();
         Form[] crfs = null;
         try {

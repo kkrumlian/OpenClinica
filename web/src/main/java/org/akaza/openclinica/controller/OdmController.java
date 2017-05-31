@@ -40,7 +40,7 @@ import org.akaza.openclinica.i18n.util.ResourceBundleProvider;
 import org.akaza.openclinica.service.ParticipantEventService;
 import org.akaza.openclinica.service.pmanage.ParticipantPortalRegistrar;
 import org.akaza.openclinica.web.pform.PFormCache;
-import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.cdisc.ns.odm.v130.ODM;
 import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionClinicalData;
@@ -314,7 +314,7 @@ public class OdmController {
         PFormCache cache = PFormCache.getInstance(context);
         String enketoURL = cache.getPFormURL(studyOID, formLayout.getOid());
         String contextHash = cache.putSubjectContext(ssoid, String.valueOf(nextEvent.getStudyEventDefinitionId()), String.valueOf(nextEvent.getSampleOrdinal()),
-                formLayout.getOid(), studyOID);
+                formLayout.getOid());
 
         String url = enketoURL + "?" + FORM_CONTEXT + "=" + contextHash;
         logger.debug("Enketo URL for " + formLayout.getName() + "= " + url);
@@ -325,7 +325,7 @@ public class OdmController {
     private String createEditUrl(String studyOID, FormLayoutBean formLayout, StudyEventBean nextEvent, String ssoid) throws Exception {
         PFormCache cache = PFormCache.getInstance(context);
         String contextHash = cache.putSubjectContext(ssoid, String.valueOf(nextEvent.getStudyEventDefinitionId()), String.valueOf(nextEvent.getSampleOrdinal()),
-                formLayout.getOid(), studyOID);
+                formLayout.getOid());
         String editURL = CoreResources.getField("sysURL.base") + "pages/api/v1/editform/" + studyOID + "/url";
 
         String url = editURL + "?" + FORM_CONTEXT + "=" + contextHash;

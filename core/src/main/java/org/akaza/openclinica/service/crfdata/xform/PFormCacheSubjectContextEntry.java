@@ -13,7 +13,6 @@ public class PFormCacheSubjectContextEntry {
     private boolean isItemInRepeatingGroup = false;
     private String itemRepeatGroupName = null;
 
-
     public String getStudySubjectOid() {
         return studySubjectOid;
     }
@@ -36,14 +35,6 @@ public class PFormCacheSubjectContextEntry {
 
     public void setOrdinal(Integer ordinal) {
         this.ordinal = ordinal;
-    }
-
-    public String getStudyOid() {
-        return studyOid;
-    }
-
-    public void setStudyOid(String studyOid) {
-        this.studyOid = studyOid;
     }
 
     public String getCrfVersionOid() {
@@ -101,4 +92,5 @@ public class PFormCacheSubjectContextEntry {
     public void setItemRepeatGroupName(String itemRepeatGroupName) {
         this.itemRepeatGroupName = itemRepeatGroupName;
     }
+
 }

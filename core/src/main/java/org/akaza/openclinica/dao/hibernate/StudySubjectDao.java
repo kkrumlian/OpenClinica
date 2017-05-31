@@ -8,7 +8,6 @@ import org.akaza.openclinica.bean.oid.StudySubjectOidGenerator;
 import org.akaza.openclinica.domain.datamap.Study;
 import org.akaza.openclinica.domain.datamap.StudyEvent;
 import org.akaza.openclinica.domain.datamap.StudySubject;
-import org.hibernate.query.Query;
 
 public class StudySubjectDao extends AbstractDomainDao<StudySubject> {
 
@@ -21,8 +20,8 @@ public class StudySubjectDao extends AbstractDomainDao<StudySubject> {
     public StudySubject findByOcOID(String OCOID) {
         getSessionFactory().getStatistics().logSummary();
         String query = "from " + getDomainClassName() + " do  where do.ocOid = :OCOID";
-        Query q = getCurrentSession().createQuery(query);
-        q.setParameter("OCOID", OCOID);
+        org.hibernate.Query q = getCurrentSession().createQuery(query);
+        q.setString("OCOID", OCOID);
         return (StudySubject) q.uniqueResult();
     }
 

@@ -37,7 +37,7 @@ import org.akaza.openclinica.service.pmanage.SeRandomizationDTO;
 import org.akaza.openclinica.service.pmanage.RandomizationRegistrar;
 import org.akaza.openclinica.service.rule.RuleSetServiceInterface;
 import org.akaza.openclinica.view.StudyInfoPanel;
-import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -293,7 +293,7 @@ public class StudyModuleController {
         ResourceBundleProvider.updateLocale(LocaleResolver.getLocale(request));
 
         StudyBean currentStudy = (StudyBean) request.getSession().getAttribute("study");
-        StudyBean currentPublicStudy = (StudyBean) request.getSession().getAttribute("publicStudy");
+
         eventDefinitionCRFDao = new EventDefinitionCRFDAO(dataSource);
         studyEventDefinitionDao = new StudyEventDefinitionDAO(dataSource);
         crfDao = new CRFDAO(dataSource);
@@ -322,16 +322,13 @@ public class StudyModuleController {
         int ruleCount = ruleSetService.getCountByStudy(currentStudy);
 
         int siteCount = studyDao.findOlnySiteIdsByStudy(currentStudy).size();
-        String tenantSchema = (String) request.getAttribute("requestSchema");
-        request.setAttribute("requestSchema", "public");
-        int userCount = userDao.findAllUsersByStudy(currentPublicStudy.getId()).size();
-        Collection childStudies = studyDao.findAllByParent(currentPublicStudy.getId());
+        int userCount = userDao.findAllUsersByStudy(currentStudy.getId()).size();
+        Collection childStudies = studyDao.findAllByParent(currentStudy.getId());
         Map childStudyUserCount = new HashMap();
         for (Object sb : childStudies) {
             StudyBean childStudy = (StudyBean) sb;
             childStudyUserCount.put(childStudy.getName(), userDao.findAllUsersByStudy(childStudy.getId()).size());
         }
-        request.setAttribute("requestSchema", tenantSchema);
 
         if (sms.getCrf() == 0) {
             sms.setCrf(StudyModuleStatus.NOT_STARTED);
