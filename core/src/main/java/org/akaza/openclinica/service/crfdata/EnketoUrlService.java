@@ -62,8 +62,7 @@ import org.akaza.openclinica.service.crfdata.xform.EnketoURLResponse;
 import org.akaza.openclinica.service.crfdata.xform.PFormCacheSubjectContextEntry;
 import org.akaza.openclinica.service.pmanage.Authorization;
 import org.akaza.openclinica.service.pmanage.ParticipantPortalRegistrar;
-import org.apache.commons.dbcp.BasicDataSource;
-
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -97,9 +96,6 @@ public class EnketoUrlService {
     @Autowired
     @Qualifier("dataSource")
     private BasicDataSource dataSource;
-
-    @Autowired
-    ServletContext context;
 
     @Autowired
     private CrfVersionDao crfVersionDao;
