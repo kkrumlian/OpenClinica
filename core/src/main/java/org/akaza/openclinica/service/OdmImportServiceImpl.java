@@ -308,11 +308,11 @@ public class OdmImportServiceImpl implements OdmImportService {
 
     private StudyUserRole populateUserRole(Study study, UserAccount userAccount, StudyUserRole sur, StudyUserRoleId surId) {
         surId.setUserName(userAccount.getUserName());
-        sur.setRoleName(Role.STUDYDIRECTOR.getName());
+        surId.setRoleName(Role.STUDYDIRECTOR.getName());
         surId.setStudyId(study.getStudyId());
-        sur.setStatusId(1);
-        sur.setOwnerId(userAccount.getUserId());
-        sur.setDateCreated(new Date());
+        surId.setStatusId(1);
+        surId.setOwnerId(userAccount.getUserId());
+        surId.setDateCreated(new Date());
         sur.setId(surId);
         return sur;
     }

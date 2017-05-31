@@ -38,6 +38,8 @@ public class LiquibaseOnDemandServiceImpl implements LiquibaseOnDemandService {
     @Autowired
     private StudyDao studyDao;
     @Autowired
+    private StudyUserRoleDao studyUserRoleDao;
+    @Autowired
     private SchemaServiceDao schemaServiceDao;
     @Autowired
     private UserAccountDao userAccountDao;
