@@ -11,6 +11,7 @@ import java.net.FileNameMap;
 import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.Connection;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -48,12 +49,14 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.akaza.openclinica.bean.core.Status;
 import org.akaza.openclinica.bean.core.Utils;
+import org.akaza.openclinica.bean.login.UserAccountBean;
 import org.akaza.openclinica.bean.managestudy.StudyBean;
 import org.akaza.openclinica.bean.managestudy.StudyEventBean;
 import org.akaza.openclinica.bean.managestudy.StudySubjectBean;
 import org.akaza.openclinica.bean.service.StudyParameterValueBean;
 import org.akaza.openclinica.bean.submit.CRFVersionBean;
 import org.akaza.openclinica.controller.openrosa.OpenRosaSubmissionController;
+import org.akaza.openclinica.core.form.StringUtil;
 import org.akaza.openclinica.dao.core.CoreResources;
 import org.akaza.openclinica.dao.hibernate.CrfDao;
 import org.akaza.openclinica.dao.hibernate.CrfVersionDao;
@@ -87,6 +90,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.exolab.castor.mapping.Mapping;
 import org.exolab.castor.xml.Marshaller;
 import org.exolab.castor.xml.XMLContext;
+import org.hibernate.internal.SessionImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -100,6 +104,8 @@ import org.w3c.dom.NamedNodeMap;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.core.util.StatusPrinter;
+
+import static org.akaza.openclinica.control.submit.EnketoFormServlet.FORM_LAYOUT_ID;
 
 @Path("/openrosa")
 @Component
@@ -199,7 +205,7 @@ public class OpenRosaServices {
     @Produces(MediaType.TEXT_XML)
     public String getFormList(@Context HttpServletRequest request, @Context HttpServletResponse response, @PathParam("studyOID") String studyOID,
             @QueryParam("formID") String uniqueId, @RequestHeader("Authorization") String authorization, @Context ServletContext context) throws Exception {
-        if (!mayProceedPreview(studyOID))
+        if (!mayProceedPreview(request, studyOID))
             return null;
         XFormList formList = null;
 
@@ -207,7 +213,6 @@ public class OpenRosaServices {
             if (StringUtils.isEmpty(uniqueId)) {
                 List<CrfBean> crfs = crfDao.findAll();
                 List<FormLayout> formLayouts = formLayoutDao.findAll();
-
                 formList = new XFormList();
                 for (CrfBean crf : crfs) {
                     for (FormLayout formLayout : formLayouts) {
@@ -231,6 +236,7 @@ public class OpenRosaServices {
                     }
                 }
             } else {
+                request.setAttribute("requestSchema", "public");
                 formList = getForm(request, response, studyOID, uniqueId, authorization, context);
             }
 
@@ -272,7 +278,7 @@ public class OpenRosaServices {
         LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
         // print logback's internal status
         StatusPrinter.print(lc);
-        if (!mayProceedPreview(studyOID))
+        if (!mayProceedPreview(request, studyOID))
             return null;
         String flavor = getQuerySet(uniqueId);
         String formLayoutOid = getFormLayoutOid(uniqueId);
@@ -344,9 +350,9 @@ public class OpenRosaServices {
     @Produces(MediaType.TEXT_XML)
     public String getManifest(@Context HttpServletRequest request, @Context HttpServletResponse response, @PathParam("studyOID") String studyOID,
             @QueryParam("formId") String uniqueId, @RequestHeader("Authorization") String authorization, @Context ServletContext context) throws Exception {
-        if (!mayProceedPreview(studyOID))
+        if (!mayProceedPreview(request, studyOID))
             return null;
-
+        request.setAttribute("studyOid", studyOID);
         String formLayoutOid = getFormLayoutOid(uniqueId);
         FormLayout formLayout = formLayoutDao.findByOcOID(formLayoutOid);
 
@@ -375,6 +381,7 @@ public class OpenRosaServices {
             String userXml = getUserXml(context);
             userList.setHash((DigestUtils.md5Hex(userXml)));
         }
+
         userList.setFilename("users.xml");
         userList.setDownloadUrl(urlBase + "/rest2/openrosa/" + studyOID + "/downloadUsers");
         manifest.add(userList);
@@ -423,7 +430,7 @@ public class OpenRosaServices {
     @Produces(MediaType.APPLICATION_XML)
     public String getFormXml(@Context HttpServletRequest request, @Context HttpServletResponse response, @PathParam("studyOID") String studyOID,
             @QueryParam("formId") String uniqueId, @RequestHeader("Authorization") String authorization) throws Exception {
-        if (!mayProceedPreview(studyOID))
+        if (!mayProceedPreview(request, studyOID))
             return null;
 
         String xform = null;
@@ -483,7 +490,7 @@ public class OpenRosaServices {
     public Response getMediaFile(@Context HttpServletRequest request, @Context HttpServletResponse response, @PathParam("studyOID") String studyOID,
             @QueryParam("formLayoutMediaId") String formLayoutMediaId, @RequestHeader("Authorization") String authorization, @Context ServletContext context)
             throws Exception {
-        if (!mayProceedPreview(studyOID))
+        if (!mayProceedPreview(request, studyOID))
             return null;
 
         FormLayoutMedia media = formLayoutMediaDao.findById(Integer.valueOf(formLayoutMediaId));
@@ -515,10 +522,10 @@ public class OpenRosaServices {
     @Path("/{studyOID}/downloadUsers")
     public Response getUserList(@Context HttpServletRequest request, @Context HttpServletResponse response, @PathParam("studyOID") String studyOID,
             @RequestHeader("Authorization") String authorization, @Context ServletContext context) throws Exception {
-        if (!mayProceedPreview(studyOID))
+        if (!mayProceedPreview(request, studyOID))
             return null;
-
-        String userXml = getUserXml(context);
+        request.setAttribute("studyOid", studyOID);
+        String userXml = getUserXml(context, studyOID);
         ResponseBuilder builder = Response.ok(userXml);
         builder = builder.header("Content-Type", "text/xml");
         return builder.build();
@@ -706,7 +713,7 @@ public class OpenRosaServices {
             for (CRFVersionBean crfVersion : crfs) {
                 String enketoURL = cache.getPFormURL(studyOID, crfVersion.getOid());
                 String contextHash = cache.putSubjectContext(ssoid, String.valueOf(nextEvent.getStudyEventDefinitionId()),
-                        String.valueOf(nextEvent.getSampleOrdinal()), crfVersion.getOid(), studyOID);
+                        String.valueOf(nextEvent.getSampleOrdinal()), crfVersion.getOid(), null, studyOID);
             }
         } catch (Exception e) {
             LOGGER.debug(e.getMessage());
@@ -767,6 +774,12 @@ public class OpenRosaServices {
         return studyBean;
     }
 
+    private StudyBean getStudyById(int id) {
+        sdao = new StudyDAO(dataSource);
+        StudyBean studyBean = (StudyBean) sdao.findByPK(id);
+        return studyBean;
+    }
+
     private StudyBean getParentStudy(String studyOid) {
         StudyBean study = getStudy(studyOid);
         if (study.getParentStudyId() == 0) {
@@ -776,6 +789,70 @@ public class OpenRosaServices {
             return parentStudy;
         }
 
+    }
+
+
+    private StudyBean getPublicStudy(String studyOid) {
+        String schema = CoreResources.getRequestSchema();
+        CoreResources.setRequestSchema("public");
+        sdao = new StudyDAO(dataSource);
+        StudyBean studyBean = (StudyBean) sdao.findByOid(studyOid);
+        CoreResources.setRequestSchema(schema);
+        return studyBean;
+    }
+
+    private StudyBean getParentPublicStudy(String studyOid) {
+        StudyBean resultBean =  null;
+        String schema = CoreResources.getRequestSchema();
+        CoreResources.setRequestSchema("public");
+        StudyBean study = getStudy(studyOid);
+        if (study.getParentStudyId() == 0) {
+            resultBean = study;
+        } else {
+            StudyBean parentStudy = (StudyBean) sdao.findByPK(study.getParentStudyId());
+            resultBean= parentStudy;
+        }
+        CoreResources.setRequestSchema(schema);
+        return resultBean;
+    }
+
+    private String updateRepeatGroupsWithOrdinal(String xform) throws Exception {
+
+        NamedNodeMap attribs = fetchXformAttributes(xform);
+        InputStream is = new ByteArrayInputStream(xform.getBytes());
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(false);
+        Document doc = factory.newDocumentBuilder().parse(is);
+        List<String> repeatGroupList = new ArrayList<>();
+
+        XPathFactory xPathfactory = XPathFactory.newInstance();
+        XPath xpath = xPathfactory.newXPath();
+        XPathExpression expr = xpath.compile("/html/body");
+
+        Node bodyNode = (Node) expr.evaluate(doc, XPathConstants.NODE);
+        repeatGroupList = xformParserHelper.bodyRepeatNodePaths(bodyNode, repeatGroupList);
+
+        for (String repeatGroup : repeatGroupList) {
+            expr = xpath.compile("/html/head/model/instance[1]" + repeatGroup);
+            Element group = (Element) expr.evaluate(doc, XPathConstants.NODE);
+            Element ordinal = doc.createElement("OC.REPEAT_ORDINAL");
+            group.appendChild(ordinal);
+
+        }
+
+        TransformerFactory transformFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformFactory.newTransformer();
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+        transformer.setOutputProperty(OutputKeys.INDENT, "no");
+        transformer.setOutputProperty(OutputKeys.METHOD, "xml");
+        StringWriter writer = new StringWriter();
+        StreamResult result = new StreamResult(writer);
+        DOMSource source = new DOMSource(doc);
+        transformer.transform(source, result);
+        String modifiedXform = writer.toString();
+        modifiedXform = applyXformAttributes(modifiedXform, attribs);
+        logger.debug("Finalized xform source: " + modifiedXform);
+        return modifiedXform;
     }
 
     public String applyXformAttributes(String xform, NamedNodeMap attribs) throws Exception {
@@ -800,13 +877,9 @@ public class OpenRosaServices {
         return attribs;
     }
 
-    private String getUserXml(ServletContext context) throws Exception {
-        HashMap<String, String> value = getSubjectContextCacheValue(context);
+    private String getUserXml(ServletContext context, String studyOID) throws Exception {
+        HashMap<String, String> value = getSubjectContextCacheValue(context, studyOID);
         String studySubjectOid = value.get("studySubjectOID");
-
-        StudySubject ssBean = ssDao.findByOcOID(studySubjectOid);
-        StudyBean study = getStudy(ssBean.getStudy().getOc_oid());
-        StudyBean parentStudy = getParentStudy(ssBean.getStudy().getOc_oid());
 
         DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
@@ -814,8 +887,16 @@ public class OpenRosaServices {
         Document doc = docBuilder.newDocument();
         Element root = doc.createElement("root");
         doc.appendChild(root);
+        StudySubject ssBean = ssDao.findByOcOID(studySubjectOid);
 
-        List<UserAccount> users = userAccountDao.findNonRootNonParticipateUsersByStudyId(study.getId(), parentStudy.getId());
+        // get public studies
+        StudyBean publicStudy = getPublicStudy(ssBean.getStudy().getOc_oid());
+        StudyBean parentPublicStudy = getParentPublicStudy(ssBean.getStudy().getOc_oid());
+        CoreResources.setRequestSchema("public");
+        List<UserAccount> users = userAccountDao
+            .findNonRootNonParticipateUsersByStudyId(publicStudy.getId(), parentPublicStudy.getId());
+            CoreResources.setRequestSchema(publicStudy.getSchemaName());
+        CoreResources.setRequestSchema(publicStudy.getSchemaName());
         for (UserAccount userAccount : users) {
             Element item = doc.createElement("item");
             Element userName = doc.createElement("user_name");
@@ -862,14 +943,16 @@ public class OpenRosaServices {
         return accessPermission;
     }
 
-    private boolean mayProceedPreview(String studyOid) throws Exception {
+    private boolean mayProceedPreview( HttpServletRequest request, String studyOid) throws Exception {
         boolean accessPermission = false;
         StudyBean study = getParentStudy(studyOid);
         StudyParameterValueDAO spvdao = new StudyParameterValueDAO(dataSource);
-
-        StudyParameterValueBean pStatus = spvdao.findByHandleAndStudy(study.getId(), "participantPortal");
+        request.setAttribute("requestSchema", study.getSchemaName());
+        StudyDAO studyDao = new StudyDAO(dataSource);
+        StudyBean studyBean = studyDao.findByOid(studyOid);
+        StudyParameterValueBean pStatus = spvdao.findByHandleAndStudy(studyBean.getId(), "participantPortal");
         participantPortalRegistrar = new ParticipantPortalRegistrar();
-        String pManageStatus = participantPortalRegistrar.getRegistrationStatus(study.getOid()).toString(); // ACTIVE ,
+        String pManageStatus = participantPortalRegistrar.getRegistrationStatus(studyBean.getOid()).toString(); // ACTIVE ,
         // PENDING ,
         // INACTIVE
         String participateStatus = pStatus.getValue().toString(); // enabled , disabled
@@ -932,14 +1015,23 @@ public class OpenRosaServices {
     }
 
     @SuppressWarnings("unchecked")
-    private HashMap<String, String> getSubjectContextCacheValue(ServletContext context) {
+    private HashMap<String, String> getSubjectContextCacheValue(ServletContext context, String studyOid) {
         LinkedHashMap<String, Object> subjectContextCache = (LinkedHashMap<String, Object>) context.getAttribute("subjectContextCache");
         String lastKey = null;
+        // the cache has to be studyOid based to accommodate for multiple studies
+        HashMap<String, String> resultMap = null;
         for (String key : subjectContextCache.keySet()) {
+            resultMap = (HashMap<String, String>) subjectContextCache.get(key);
+            String resultStudyOid = (String) resultMap.get("studyOid");
+            if (StringUtils.equals(resultStudyOid, studyOid)) {
+                break;
+            }
             lastKey = key;
         }
-        HashMap<String, String> value = (HashMap<String, String>) subjectContextCache.get(lastKey);
-        return value;
+        if (resultMap == null) {
+            resultMap = (HashMap<String, String>) subjectContextCache.get(lastKey);
+        }
+        return resultMap;
     }
 
 }

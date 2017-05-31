@@ -171,37 +171,10 @@
             <column name="reference"/>
         </insert>
     </changeSet>
-    <!-- Added Tables for Spring Security -->
-    <changeSet author="pgawade (generated)" id="1235684743487-402">
-        <createTable tableName="authorities">
-            <column autoIncrement="true" name="id" type="int">
-                <constraints nullable="false"/>
-            </column>
-            <column name="username" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="authority" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
-            <column name="version" type="int"/>
-        </createTable>
-    </changeSet>
+
     <!-- changeset only for oracle "authoririties" table: sequence to create a value for "id" column, trigger to insert sequence next value into "id" column -->
-    <changeSet author="pgawade (generated)" id="1235684743487-433">
-        <preConditions onFail="MARK_RAN">
-            <dbms type="oracle"/>
-        </preConditions>
-        <createSequence sequenceName="AUTHORITIES_ID_SEQ"/>
-    </changeSet>
-    <changeSet author="pgawade (generated)" id="1235684743487-434">
-        <preConditions onFail="MARK_RAN">
-            <dbms type="oracle"/>
-        </preConditions>
-        <sql splitStatements="false"> /* -- prompt Create trigger AUTHORITIES_BEF_TRG on table
-            AUTHORITIES -- */ create or replace trigger authorities_bef_trg before insert on
-            authorities for each row begin if :new.id is null then select AUTHORITIES_ID_SEQ.nextval
-            into :new.id from dual; end if; end; /* / */ </sql>
-    </changeSet>
+    
+    
     <changeSet author="pgawade (generated)" id="1235684743487-403">
         <createTable tableName="oc_qrtz_blob_triggers">
             <column name="trigger_name" type="VARCHAR(200)">
@@ -210,7 +183,7 @@
             <column name="trigger_group" type="VARCHAR(200)">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
-            <column name="blob_data" type="BLOB"/>
+            <column name="blob_data" type="bytea"/>
         </createTable>
     </changeSet>
     <changeSet author="pgawade (generated)" id="1235684743487-404">
@@ -218,7 +191,7 @@
             <column name="calendar_name" type="VARCHAR(200)">
                 <constraints nullable="false" primaryKey="true"/>
             </column>
-            <column name="calendar" type="BLOB">
+            <column name="calendar" type="bytea">
                 <constraints nullable="false"/>
             </column>
         </createTable>
@@ -293,7 +266,7 @@
             <column name="requests_recovery" type="BOOLEAN">
                 <constraints nullable="false"/>
             </column>
-            <column name="job_data" type="BLOB"/>
+            <column name="job_data" type="bytea"/>
         </createTable>
     </changeSet>
     <changeSet author="pgawade (generated)" id="1235684743487-408">
@@ -401,16 +374,8 @@
             <column name="end_time" type="BIGINT"/>
             <column name="calendar_name" type="VARCHAR(200)"/>
             <column name="misfire_instr" type="SMALLINT"/>
-            <column name="job_data" type="BLOB"/>
+            <column name="job_data" type="bytea"/>
         </createTable>
-    </changeSet>
-    <changeSet author="pgawade (generated)" id="1235684743487-415">
-        <insert tableName="authorities">
-            <column name="id" valueNumeric="1"/>
-            <column name="username" value="root"/>
-            <column name="authority" value="ROLE_USER"/>
-            <column name="version" valueNumeric="1"/>
-        </insert>
     </changeSet>
     <changeSet author="pgawade (generated)" id="1235684743487-416">
         <insert tableName="oc_qrtz_locks">
@@ -492,7 +457,7 @@
         <addForeignKeyConstraint baseColumnNames="assigned_user_id" baseTableName="discrepancy_note"
             constraintName="discrepancy_note_asn_u_id_fkey" deferrable="false"
             initiallyDeferred="false" onDelete="RESTRICT" onUpdate="RESTRICT"
-            referencedColumnNames="user_id" referencedTableName="user_account"/>
+            referencedColumnNames="user_id" referencedTableName="user_account" referencedTableSchemaName="public"/>
     </changeSet>
 
     <changeSet author="pgawade" id="1235684743487-430">
@@ -506,14 +471,6 @@
             <column name="overridable" valueBoolean="false"/>
         </insert>
     </changeSet>
-    <changeSet author="pgawade" id="1235684743487-431">
-        <insert tableName="study_parameter_value">
-            <column name="study_parameter_value_id" valueNumeric="14"/>
-            <column name="study_id" valueNumeric="1"/>
-            <column name="value" value="false"/>
-            <column name="parameter" value="secondaryLabelViewable"/>
-        </insert>
-    </changeSet>
     <changeSet author="pgawade" id="1235684743487-432">
         <addColumn tableName="item_form_metadata">
             <column name="width_decimal" type="VARCHAR(10)"/>
@@ -523,32 +480,5 @@
         <addColumn tableName="crf">
             <column name="study_id" type="integer"/>
         </addColumn>
-    </changeSet>
-    <changeSet author="kkrumlian" id="1235684743487-434">
-        <insert tableName="status">
-            <column name="status_id" valueNumeric="10"/>
-            <column name="name" value="souce_data_verification"/>
-            <column name="description" value="indicates the element has undergone SDV"/>
-        </insert>
-    </changeSet>
-    <changeSet author="kkrumlian" id="1235684743487-435" dbms="postgresql">
-        <sql splitStatements="false">
-            delete from authorities;
-            insert into authorities  select nextval('authorities_id_seq'), user_name,'ROLE_USER',1 from user_account;
-        </sql>
-        <rollback>
-            delete from authorities;
-            insert into authorities values (1, 'root','ROLE_USER',1);
-        </rollback>
-    </changeSet>
-    <changeSet author="kkrumlian" id="1235684743487-436" dbms="oracle">
-        <sql>
-            delete from authorities;
-            insert into authorities select AUTHORITIES_ID_SEQ.NEXTVAL,user_name,'ROLE_USER',1 from user_account;
-        </sql>
-        <rollback>
-            delete from authorities;
-            insert into authorities values (1, 'root','ROLE_USER',1);
-        </rollback>
     </changeSet>
 </databaseChangeLog>
