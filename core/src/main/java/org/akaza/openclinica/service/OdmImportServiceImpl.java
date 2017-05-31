@@ -1,51 +1,19 @@
 package org.akaza.openclinica.service;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import javax.sql.DataSource;
-
 import org.akaza.openclinica.bean.core.Role;
 import org.akaza.openclinica.bean.login.UserAccountBean;
 import org.akaza.openclinica.bean.managestudy.StudyBean;
-import org.akaza.openclinica.dao.hibernate.CrfDao;
-import org.akaza.openclinica.dao.hibernate.CrfVersionDao;
-import org.akaza.openclinica.dao.hibernate.EventDefinitionCrfDao;
-import org.akaza.openclinica.dao.hibernate.EventDefinitionCrfTagDao;
-import org.akaza.openclinica.dao.hibernate.FormLayoutDao;
-import org.akaza.openclinica.dao.hibernate.FormLayoutMediaDao;
-import org.akaza.openclinica.dao.hibernate.StudyDao;
-import org.akaza.openclinica.dao.hibernate.StudyEventDefinitionDao;
-import org.akaza.openclinica.dao.hibernate.StudyParameterValueDao;
-import org.akaza.openclinica.dao.hibernate.StudyUserRoleDao;
-import org.akaza.openclinica.dao.hibernate.UserAccountDao;
+import org.akaza.openclinica.dao.core.CoreResources;
+import org.akaza.openclinica.dao.hibernate.*;
 import org.akaza.openclinica.domain.Status;
-import org.akaza.openclinica.domain.datamap.CrfBean;
-import org.akaza.openclinica.domain.datamap.EventDefinitionCrf;
-import org.akaza.openclinica.domain.datamap.EventDefinitionCrfTag;
-import org.akaza.openclinica.domain.datamap.FormLayout;
-import org.akaza.openclinica.domain.datamap.Study;
-import org.akaza.openclinica.domain.datamap.StudyEventDefinition;
-import org.akaza.openclinica.domain.datamap.StudyParameterValue;
-import org.akaza.openclinica.domain.datamap.StudyUserRole;
-import org.akaza.openclinica.domain.datamap.StudyUserRoleId;
+import org.akaza.openclinica.domain.datamap.*;
 import org.akaza.openclinica.domain.user.UserAccount;
 import org.akaza.openclinica.domain.xform.XformParser;
 import org.akaza.openclinica.service.crfdata.ExecuteIndividualCrfObject;
 import org.akaza.openclinica.service.crfdata.XformMetaDataService;
 import org.akaza.openclinica.service.dto.Form;
 import org.akaza.openclinica.service.pmanage.ParticipantPortalRegistrar;
-import org.cdisc.ns.odm.v130.EventType;
-import org.cdisc.ns.odm.v130.ODM;
-import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionFormDef;
-import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionFormRef;
-import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionGlobalVariables;
-import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionMetaDataVersion;
-import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionStudy;
-import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionStudyEventDef;
-import org.cdisc.ns.odm.v130.ODMcomplexTypeDefinitionStudyEventRef;
-import org.cdisc.ns.odm.v130.YesOrNo;
+import org.cdisc.ns.odm.v130.*;
 import org.openclinica.ns.odm_ext_v130.v31.OCodmComplexTypeDefinitionConfigurationParameters;
 import org.openclinica.ns.odm_ext_v130.v31.OCodmComplexTypeDefinitionEventDefinitionDetails;
 import org.openclinica.ns.odm_ext_v130.v31.OCodmComplexTypeDefinitionFormLayoutDef;
@@ -57,10 +25,13 @@ import org.springframework.validation.DataBinder;
 import org.springframework.validation.Errors;
 import org.springframework.web.client.RestTemplate;
 
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
 public class OdmImportServiceImpl implements OdmImportService {
     public final String FM_BASEURL = "http://fm.openclinica.info:8080/api/protocol/";
-    // public final String FM_BASEURL = "http://oc.local:8090/api/protocol/";
-
     private UserAccountDao userAccountDao;
     private StudyUserRoleDao studyUserRoleDao;
     private StudyEventDefinitionDao studyEventDefDao;
@@ -72,6 +43,7 @@ public class OdmImportServiceImpl implements OdmImportService {
     private StudyDao studyDao;
     private EventDefinitionCrfTagDao eventDefinitionCrfTagDao;
     private StudyParameterValueDao studyParameterValueDao;
+    private DataSource dataSource;
 
     private XformParser xformParser;
 
@@ -80,10 +52,13 @@ public class OdmImportServiceImpl implements OdmImportService {
     protected final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
     public OdmImportServiceImpl(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     @Transactional
-    public void importOdmToOC(ODM odm) {
+    public void importOdmToOC(ODM odm, String boardId) {
+
+        CoreResources.setRequestSchemaByStudy(odm.getStudy().get(0).getOID(),dataSource);
 
         UserAccount userAccount = getCurrentUser();
         // TODO add validation to all entities
@@ -102,17 +77,7 @@ public class OdmImportServiceImpl implements OdmImportService {
         spv.setValue("enabled");
         spv = getStudyParameterValueDao().saveOrUpdate(spv);
 
-        StudyUserRole studyUserRole = null;
-        StudyUserRoleId studyUserRoleId = null;
-
-        Form[] fmCrfs = getAllCrfsByProtIdFromFormManager(study);
-
-        ArrayList<StudyUserRole> surRoles = getStudyUserRoleDao().findAllUserRolesByUserAccount(userAccount, study.getStudyId(), study.getStudyId());
-        if (surRoles.size() == 0) {
-            studyUserRoleId = new StudyUserRoleId();
-            studyUserRole = new StudyUserRole();
-            studyUserRole = getStudyUserRoleDao().saveOrUpdate(populateUserRole(study, userAccount, studyUserRole, studyUserRoleId));
-        }
+        Form[] fmCrfs = getAllCrfsByProtIdFromFormManager(boardId);
 
         StudyEventDefinition studyEventDefinition = null;
         List<ODMcomplexTypeDefinitionMetaDataVersion> odmMetadataVersions = odmStudy.getMetaDataVersion();
@@ -528,11 +493,9 @@ public class OdmImportServiceImpl implements OdmImportService {
         this.formLayoutDao = formLayoutDao;
     }
 
-    public Form[] getAllCrfsByProtIdFromFormManager(Study study) {
-        // String protocolId = study.getUniqueIdentifier();
-        String protocolId = study.getOc_oid();
+    public Form[] getAllCrfsByProtIdFromFormManager(String boardId) {
 
-        String url = FM_BASEURL + protocolId + "/forms";
+        String url = FM_BASEURL + boardId + "/forms";
         RestTemplate restTemplate = new RestTemplate();
         Form[] crfs = null;
         try {

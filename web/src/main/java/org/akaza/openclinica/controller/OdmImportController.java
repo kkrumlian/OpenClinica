@@ -18,7 +18,7 @@ public class OdmImportController {
     @RequestMapping(value = "/boardId/{boardId}", method = RequestMethod.POST)
     public @ResponseBody void importOdmToOC(@RequestBody org.cdisc.ns.odm.v130.ODM odm, @PathVariable("boardId") String boardId)
             throws Exception {
-        odmImportServiceImpl.importOdmToOC(odm);
+        odmImportServiceImpl.importOdmToOC(odm, boardId);
     }
 
 }
