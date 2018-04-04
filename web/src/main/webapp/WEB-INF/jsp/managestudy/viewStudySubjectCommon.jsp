@@ -207,11 +207,10 @@ $(function() {
     var pageJson = {
         name: "view subject",
         components: [{ 
-            name: "SE_EVENT1.F_F1",
+            name: "SE_HEALTHCAREENCOUNTERS.F_OUTPATIENTEN",
             type: "table",
             columns: [
-              "I_MED1",
-              "I_MED2"
+              "I_OUTPA_VISIT_DATE"
             ]
         }, { 
             name: "SE_EVENT1.F_MEDS",
