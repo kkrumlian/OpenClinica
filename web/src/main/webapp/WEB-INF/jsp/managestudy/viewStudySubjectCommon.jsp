@@ -319,6 +319,8 @@ $(function() {
             var componentOid = studyEventOid + '.' + formOid;
             var columnTitles = [];
             var submissionObj = {};
+            console.log("Columns:" + columns);
+            console.log("componentOid:" + componentOid);
             collection(columns[componentOid]).forEach(function(col) {
                 var item = items[col];
                 columnTitles.push(item ? item.Question.TranslatedText : col);
