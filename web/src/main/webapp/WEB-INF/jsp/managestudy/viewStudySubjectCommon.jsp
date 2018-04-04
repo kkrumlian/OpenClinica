@@ -219,7 +219,7 @@ $(function() {
                 "I_INPAT_INPATIENT_ADMIT_DATE2"
             ]
         },{ 
-            name: "SE_DIAGNOSIS.F_DEMOGRAPHICS",
+            name: "SE_DIAGNOSIS.F_DIAGNOSIS",
             type: "table",
             columns: [
                 "I_DIAGN_OBS_START_DATE",
