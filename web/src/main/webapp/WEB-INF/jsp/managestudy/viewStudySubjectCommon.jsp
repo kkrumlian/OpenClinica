@@ -218,7 +218,14 @@ $(function() {
             columns: [
                 "I_INPAT_INPATIENT_ADMIT_DATE2"
             ]
-        }
+        },{ 
+            name: "SE_DIAGNOSIS.F_DEMOGRAPHICS",
+            type: "table",
+            columns: [
+                "I_DIAGN_OBS_START_DATE",
+                "I_DIAGN_DIAGNOSIS_DESC"
+            ]
+        }            
         ]
     };
     
