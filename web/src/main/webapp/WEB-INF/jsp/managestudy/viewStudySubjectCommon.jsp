@@ -207,24 +207,10 @@ $(function() {
     var pageJson = {
         name: "view subject",
         components: [{ 
-            name: "SE_EVENT1.F_F1",
+            name: "SE_HEALTHCAREENCOUNTERS.F_OUTPATIENTEN",
             type: "table",
             columns: [
-                "I_F1_ML_DROPDOWN",
-                "I_F1_RADIO",
-                "I_F1_RADIO_HORIZ_COMP",
-                "I_F1_SM_COLUMNS",
-                "I_F1_MEALS",
-                "I_F1_SARAH"
-            ]
-        }, { 
-            name: "SE_EVENT2.F_MEDICATIONS",
-            type: "table",
-            columns: [
-                "I_MEDIC_STARTDT",
-                "I_MEDIC_MEDOTHER",
-                "DOES_NOT_EXIST",
-                "I_MEDIC_MEDNAME"
+                "I_OUTPA_VISIT_DATE"
             ]
         }]
     };
