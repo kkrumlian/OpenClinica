@@ -212,7 +212,14 @@ $(function() {
             columns: [
                 "I_OUTPA_VISIT_DATE"
             ]
-        }]
+        },{ 
+            name: "SE_HEALTHCAREENCOUNTERS.F_INPATIENTHOS",
+            type: "table",
+            columns: [
+                "I_INPAT_INPATIENT_ADMIT_DATE2"
+            ]
+        }
+        ]
     };
     
     $.when(
