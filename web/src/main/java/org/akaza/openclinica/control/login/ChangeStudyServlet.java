@@ -342,7 +342,8 @@ public class ChangeStudyServlet extends SecureController {
         request.setAttribute("enrollmentCapped", isEnrollmentCapped());
 
         if (currentRole.isInvestigator() || currentRole.isResearchAssistant()|| currentRole.isResearchAssistant2()) {
-            forwardPage(Page.LIST_STUDY_SUBJECTS_SERVLET);
+            response.sendRedirect(request.getContextPath() + Page.LIST_STUDY_SUBJECTS_SERVLET.getFileName());
+            return;
         }
         if (currentRole.isMonitor()) {
             response.sendRedirect(request.getContextPath() + "/pages/viewAllSubjectSDVtmp?sdv_restore=true&studyId=" + currentStudy.getId() + "&studyJustChanged=yes");

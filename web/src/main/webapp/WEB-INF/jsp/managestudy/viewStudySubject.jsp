@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<jsp:useBean class="org.apache.commons.lang.StringEscapeUtils" id="esc" />
 <fmt:setBundle basename="org.akaza.openclinica.i18n.words" var="resword"/>
 <fmt:setBundle basename="org.akaza.openclinica.i18n.notes" var="restext"/>
 <link rel="stylesheet" href="includes/font-awesome-4.7.0/css/font-awesome.css">
@@ -378,7 +379,7 @@
                                   <c:choose>
                                     <c:when test="${
                                       studySub.status.name!='removed' &&
-                                      sessionScope.baseUserRole=='Clinical Research Coordinator' || sessionScope.baseUserRole=='Investigator' &&
+                                      (sessionScope.baseUserRole=='Clinical Research Coordinator' || sessionScope.baseUserRole=='Investigator') &&
                                       participateStatus=='enabled'
                                     }">
                                       style="visibility:visible;"
@@ -1142,15 +1143,26 @@
                   #access-code-td {
                     position: relative;
                   }
+                  #access-code-input {
+                    width: 150px;
+                  }
+                  #access-note {
+                    color: #777;
+                  }
+                  #access-url {
+                    text-decoration: underline;
+                  }
                   #eye {
                     position: absolute;
-                    top: 2px;
-                    right: 30px;
+                    top: 1px;
+                    left: 111px;
                     font-size: 18pt;
+                    background-color: white;
+                    padding: 2px 6px;
                   }
                 </style>
                 <div id="phone-widget">
-                  <input id="phone-input" type="text" class="formfield form-control" onfocus="this.select()"> 
+                  <input id="phone-input" type="tel" class="formfield form-control" onfocus="this.select()"> 
                   <div id="country-select">
                     <div id="country-flag" class="down-arrow">&nbsp;</div> 
                     <div id="country-select-down-arrow" class="down-arrow">&nbsp;</div> 
@@ -1413,14 +1425,20 @@
             <table cellspacing="10">
               <tr valign="top">
                 <td class="formlabel" align="left">
-                  <span>Access Link</span>
+                  <span>Access Code</span>
                 </td>
                 <td valign="top" id="access-code-td">
-                  <input id="access-code-input" onfocus="this.select()" type="password" value="" size="45" class="formfield form-control">
-                  <div class="subnote">
-                    Please note: viewing access code will be audited.
-                  </div>
+                  <input id="access-code-input" readonly onfocus="this.select()" type="password" value="" size="45" class="formfield form-control">
                   <i id="eye" class="fa fa-eye"></i>
+                </td>
+                <td valign="top" id="access-note">
+                  <span>Viewing access code will be audited.</span>
+                </td>
+              </tr>
+              <tr valign="top">
+                <td></td>
+                <td valign="top" colspan="2">
+                  Participate URL: <a id="access-url" href=""></a>
                 </td>
               </tr>
             </table>
@@ -1442,9 +1460,12 @@
 <script type="text/javascript">
 
     var jsAtt = '${showOverlay}';
-
     if (jsAtt === "true"){
         jQuery.blockUI({message: jQuery('#editSubjectForm'), css: {left: "300px", top: "10px"}});
+    }
+
+    function logDump() {
+        console.log(arguments);
     }
 
     var participateInfo;
@@ -1459,16 +1480,39 @@
         $('#info-phone-number').text(participateInfo.phoneNumber);
         $('#info-participate-status').text(participateInfo.status[0] + participateInfo.status.substr(1).toLowerCase());
     }
-    updateParticipateInfo();
+    function enableDisableInviteRadios() {
+        var validEmail = $('#email-input-error').is(':hidden');
+        var hasEmail = !!$('#email-input').val().trim() && validEmail;
+        var hasPhone = !!$('#phone-input').val().trim();
+        if (hasEmail || hasPhone) {
+            $('#invite-option input').removeAttr("disabled");
+        }
+        else {
+            $('#invite-option input').attr("disabled", "disabled");
+        }
+    }
 
-    jQuery(document).ready(function () {
+    function getAccessCode() {
         jQuery.ajax({
             type: 'get',
-            url: '${pageContext.request.contextPath}/pages/auth/api/clinicaldata/studies/${study.oid}/participants/${studySub.label}',
+            url: '${pageContext.request.contextPath}/pages/auth/api/clinicaldata/studies/${study.oid}/participants/${esc.escapeJavaScript(studySub.label)}/accessLink',
+            success: function(data) {
+                $('#access-code-input').val(data.accessCode);
+                $('#access-url').text(data.host);
+            },
+            error: logDump
+        });
+    }
+
+    jQuery(document).ready(function () {
+        updateParticipateInfo();
+        getAccessCode();
+        
+        jQuery.ajax({
+            type: 'get',
+            url: '${pageContext.request.contextPath}/pages/auth/api/clinicaldata/studies/${study.oid}/participants/${esc.escapeJavaScript(studySub.label)}',
             success: updateParticipateInfo,
-            error: function() {
-                console.log(arguments);
-            }
+            error: logDump
         });
 
         jQuery('#editParticipantID').click(function () {
@@ -1484,13 +1528,14 @@
             };
             jQuery.ajax({
                 type: 'post',
-                url: '${pageContext.request.contextPath}/pages/auth/api/clinicaldata/studies/${study.oid}/participants/${studySub.label}/connect',
+                url: '${pageContext.request.contextPath}/pages/auth/api/clinicaldata/studies/${study.oid}/participants/${esc.escapeJavaScript(studySub.label)}/connect',
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                success: updateParticipateInfo,
-                error: function() {
-                    console.log(arguments);
-                }
+                success: function(data) {
+                    updateParticipateInfo(data);
+                    getAccessCode();
+                },
+                error: logDump
             });
             jQuery.unblockUI();
             return false;
@@ -1515,7 +1560,9 @@
                 $('#email-input-error').show();
                 $('#connect-button').attr('disabled', 'disabled');
             }
+            enableDisableInviteRadios();
         });
+        jQuery('#phone-input').blur(enableDisableInviteRadios);
 
         jQuery('#contactInformation').click(function() {
             $('#name-input').val(participateInfo.firstName);
@@ -1530,10 +1577,13 @@
             $('#email-input-error').hide();
             $('#invite-option input[value=' + participateInfo.inviteParticipant + ']').click();
 
+            enableDisableInviteRadios();
             jQuery.blockUI({ message: jQuery('#contactInformationForm'), css:{left: "300px", top:"10px" } });
         });
 
         jQuery('#participateAccess').click(function() {
+            $('#eye').show();
+            $('#access-code-input').attr('type', 'password');
             jQuery.blockUI({ message: jQuery('#participateAccessForm'), css:{left: "300px", top:"10px" } });
         });
 
@@ -1555,32 +1605,20 @@
         });
 
         jQuery('#eye').click(function() {
-            var eye = $(this);
-            if (eye.hasClass('fa-eye')) {
-              jQuery.ajax({
-                  type: 'post',
-                  url: '${pageContext.request.contextPath}/pages/auth/api/studies/${study.oid}/auditEvents',
-                  contentType: 'application/json',
-                  data: JSON.stringify({
-                      auditTable: 'study_subject',
-                      entityId: '${studySub.id}',
-                      entityName: 'Participant ID',
-                      auditLogEventTypId: '42'                
-                  }),
-                  success: function(data) {
-                      console.log(arguments);
-                      alert(data);
-                  },
-                  error: function() {
-                      console.log(arguments);
-                  }
-              });
-              $('#access-code-input').attr('type', 'text');
-            }
-            else {
-              $('#access-code-input').attr('type', 'password');
-            }
-            eye.toggleClass('fa-eye fa-eye-slash');
+            $(this).hide();
+            jQuery.ajax({
+                type: 'post',
+                url: '${pageContext.request.contextPath}/pages/auth/api/studies/${study.oid}/auditEvents',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    auditTable: 'study_subject',
+                    entityId: '${studySub.id}',
+                    entityName: 'Participant ID',
+                    auditLogEventTypId: '42'                
+                }),
+                error: logDump
+            });
+            $('#access-code-input').attr('type', 'text');
         });
      });
 
