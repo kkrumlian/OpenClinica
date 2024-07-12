@@ -149,7 +149,6 @@ form element in red --%>
 		</c:when>
 		<c:otherwise>
 			<c:set var="prefilename" value="${pathAndName}"/>
-			<c:set var="prefilename" value="${ocurlutils:encode(prefilename)"/>
             <a href="DownloadAttachedFile?
             eventCRFId=<c:out value="${section.eventCRF.id}"/>&fileName=<c:out value="${fn:replace(prefilename,'+','%2B')}"/>"
             id="a<c:out value="${itemId}"/>"><c:out value="${inputTxtValue}"/></a>
